@@ -27,9 +27,9 @@ export const LeaderboardView = ({ onBackHome, onPlayAgain }) => {
 
   return (
     <div className="w-full max-w-5xl mx-auto px-4 py-8 flex flex-col items-center min-h-[calc(100vh-100px)] relative z-10">
-      
+
       <div className="glass-panel p-6 sm:p-10 rounded-3xl w-full border border-cyan-500/40 flex flex-col gap-6">
-        
+
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-800 pb-6 text-center sm:text-left">
           <div className="flex items-center gap-3">
@@ -59,7 +59,7 @@ export const LeaderboardView = ({ onBackHome, onPlayAgain }) => {
               <RotateCcw className="w-4 h-4" />
               <span>PLAY GAME</span>
             </button>
-            
+
             <button
               onClick={onBackHome}
               className="btn-cyber-secondary text-sm py-2.5 px-4"
@@ -143,7 +143,7 @@ export const LeaderboardView = ({ onBackHome, onPlayAgain }) => {
           <span className="text-xs text-slate-500 font-mono">
             Showing top {board.length} arena records
           </span>
-          
+
           <button
             onClick={handleReset}
             className="text-xs text-slate-500 hover:text-rose-400 transition-colors flex items-center gap-1 font-mono"

@@ -12,7 +12,8 @@ export const Challenge2View = ({
   updateStreak,
   streak,
   onTickTimer,
-  timerSeconds
+  timerSeconds,
+  onPlayerSubmit
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState(null);
@@ -88,6 +89,16 @@ export const Challenge2View = ({
       pointsEarned: earned + speedBonus,
       timeTaken: config.timerSeconds - timerSeconds
     });
+
+    if (onPlayerSubmit) {
+      onPlayerSubmit({
+        questionId: currentQ.id,
+        selectedOption: selectedVal,
+        isCorrect,
+        basePoints: config.basePoints,
+        roundNum: 2
+      });
+    }
 
     // Auto advance after 1.8s
     setTimeout(() => {

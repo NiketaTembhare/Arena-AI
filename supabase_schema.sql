@@ -133,3 +133,102 @@ ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, points_per_question = EXCLU
 -- SEED DATA: 90 QUESTIONS SAMPLE INSERTS
 -- --------------------------------------------------------------------
 -- (Note: Full 90 question records are initialized below and synchronized via questionService & offlineQuestionBank)
+
+-- ====================================================================
+-- LIVE HOST-CONTROLLED SYNCHRONOUS MULTIPLAYER SCHEMA EXTENSIONS
+-- ====================================================================
+
+-- 6. TABLE: game_rooms
+CREATE TABLE IF NOT EXISTS public.game_rooms (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  room_code VARCHAR(10) NOT NULL UNIQUE,
+  host_id VARCHAR(100) NOT NULL,
+  status VARCHAR(30) NOT NULL DEFAULT 'lobby', -- 'lobby', 'round1', 'round1_results', 'round2', 'round2_results', 'round3', 'final_results'
+  current_round INT DEFAULT 0,
+  round_started_at TIMESTAMPTZ,
+  round_duration_seconds INT DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_game_rooms_code ON public.game_rooms(room_code);
+CREATE INDEX IF NOT EXISTS idx_game_rooms_status ON public.game_rooms(status);
+
+-- 7. TABLE: room_players
+CREATE TABLE IF NOT EXISTS public.room_players (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  room_id UUID NOT NULL REFERENCES public.game_rooms(id) ON DELETE CASCADE,
+  display_name VARCHAR(100) NOT NULL,
+  device_token VARCHAR(100) NOT NULL,
+  joined_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(room_id, device_token)
+);
+
+CREATE INDEX IF NOT EXISTS idx_room_players_room ON public.room_players(room_id);
+CREATE INDEX IF NOT EXISTS idx_room_players_token ON public.room_players(room_id, device_token);
+
+-- 8. TABLE: room_round_questions (Per-player 5-of-20 random assignment per round)
+CREATE TABLE IF NOT EXISTS public.room_round_questions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  room_id UUID NOT NULL REFERENCES public.game_rooms(id) ON DELETE CASCADE,
+  player_id UUID NOT NULL REFERENCES public.room_players(id) ON DELETE CASCADE,
+  round INT NOT NULL,
+  question_id VARCHAR(255) NOT NULL, -- Flexible VARCHAR string or UUID
+  question_data JSONB NOT NULL, -- Serialized question content & options
+  position INT NOT NULL, -- 1 to 5
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(room_id, player_id, round, position)
+);
+
+CREATE INDEX IF NOT EXISTS idx_room_round_q_player ON public.room_round_questions(room_id, player_id, round);
+
+-- 9. TABLE: room_answers (Live player answer submissions)
+CREATE TABLE IF NOT EXISTS public.room_answers (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  room_id UUID NOT NULL REFERENCES public.game_rooms(id) ON DELETE CASCADE,
+  player_id UUID NOT NULL REFERENCES public.room_players(id) ON DELETE CASCADE,
+  round INT NOT NULL,
+  question_id VARCHAR(255) NOT NULL,
+  selected_option VARCHAR(255),
+  is_correct BOOLEAN NOT NULL,
+  points_earned INT DEFAULT 0,
+  response_time_ms INT DEFAULT 0,
+  answered_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(room_id, player_id, round, question_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_room_answers_room_round ON public.room_answers(room_id, round);
+CREATE INDEX IF NOT EXISTS idx_room_answers_player ON public.room_answers(room_id, player_id);
+
+-- --------------------------------------------------------------------
+-- ROW LEVEL SECURITY (RLS) POLICIES FOR MULTIPLAYER
+-- --------------------------------------------------------------------
+ALTER TABLE public.game_rooms ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.room_players ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.room_round_questions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.room_answers ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public insert game_rooms" ON public.game_rooms FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public select game_rooms" ON public.game_rooms FOR SELECT USING (true);
+CREATE POLICY "Allow public update game_rooms" ON public.game_rooms FOR UPDATE USING (true);
+
+CREATE POLICY "Allow public insert room_players" ON public.room_players FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public select room_players" ON public.room_players FOR SELECT USING (true);
+CREATE POLICY "Allow public update room_players" ON public.room_players FOR UPDATE USING (true);
+
+CREATE POLICY "Allow public insert room_round_questions" ON public.room_round_questions FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public select room_round_questions" ON public.room_round_questions FOR SELECT USING (true);
+
+CREATE POLICY "Allow public insert room_answers" ON public.room_answers FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public select room_answers" ON public.room_answers FOR SELECT USING (true);
+
+-- --------------------------------------------------------------------
+-- ENABLE SUPABASE REALTIME REPLICATION FOR LIVE BOOTH PLAY
+-- --------------------------------------------------------------------
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.game_rooms, public.room_players, public.room_answers;
+  END IF;
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END $$;

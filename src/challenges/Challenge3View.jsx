@@ -11,7 +11,8 @@ export const Challenge3View = ({
   updateScore,
   updateStreak,
   streak,
-  timerSeconds
+  timerSeconds,
+  onPlayerSubmit
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState(null);
@@ -98,6 +99,16 @@ export const Challenge3View = ({
       timeTaken: 15
     });
 
+    if (onPlayerSubmit) {
+      onPlayerSubmit({
+        questionId: currentQ.id,
+        selectedOption: selectedVal,
+        isCorrect,
+        basePoints: config.basePointsPerPuzzle,
+        roundNum: 3
+      });
+    }
+
     setTimeout(() => {
       advancePuzzle();
     }, 1800);
@@ -146,6 +157,16 @@ export const Challenge3View = ({
       pointsEarned: earned,
       timeTaken: 15
     });
+
+    if (onPlayerSubmit) {
+      onPlayerSubmit({
+        questionId: currentQ.id,
+        selectedOption: currentOrderIds.join(','),
+        isCorrect,
+        basePoints: config.basePointsPerPuzzle,
+        roundNum: 3
+      });
+    }
 
     setTimeout(() => {
       advancePuzzle();
