@@ -1,234 +1,186 @@
--- ====================================================================
--- AI ARENA — SUPABASE DATABASE SCHEMA & 90-QUESTION SEED MIGRATION
--- ====================================================================
+-- ==========================================================
+-- AI ARENA — CLEAN RESET DATABASE SCHEMA & SEED DATA
+-- ==========================================================
 
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- 1. DROP EXISTING TABLES & VIEWS
+DROP VIEW IF EXISTS room_leaderboard CASCADE;
+DROP TABLE IF EXISTS room_answers CASCADE;
+DROP TABLE IF EXISTS room_round_questions CASCADE;
+DROP TABLE IF EXISTS room_players CASCADE;
+DROP TABLE IF EXISTS game_rooms CASCADE;
+DROP TABLE IF EXISTS questions CASCADE;
 
--- --------------------------------------------------------------------
--- 1. TABLE: challenges
--- --------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS public.challenges (
-  id INT PRIMARY KEY,
-  name VARCHAR(100) NOT NULL,
-  slug VARCHAR(50) NOT NULL UNIQUE,
-  description TEXT,
-  challenge_number INT NOT NULL UNIQUE,
-  time_limit INT NOT NULL, -- seconds (10 for C1, 15 for C2, 75 for C3 total)
-  points_per_question INT NOT NULL,
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+-- 2. QUESTIONS TABLE
+CREATE TABLE questions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  round int NOT NULL CHECK (round IN (1, 2, 3)),
+  question_type text NOT NULL CHECK (question_type IN ('image_comparison', 'logo_mcq', 'emoji_mcq')),
+  prompt_text text,                  -- question text or emoji clue
+  real_image_url text,               -- round 1 real photo static path
+  ai_image_url text,                 -- round 1 AI synthetic photo static path
+  logo_url text,                     -- round 2 logo URL static path
+  options jsonb,                     -- array of 4 strings for round 2 & 3
+  correct_option text,               -- matches one option string for round 2 & 3
+  explanation text,
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamptz DEFAULT now()
 );
 
--- --------------------------------------------------------------------
--- 2. TABLE: questions (90 total question bank)
--- --------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS public.questions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  challenge_id INT NOT NULL REFERENCES public.challenges(id) ON DELETE CASCADE,
-  question_type VARCHAR(50) NOT NULL, -- 'image_comparison', 'visual_mcq', 'scenario_mcq', 'prompt_injection_defender', 'interactive_ordering'
-  question_text TEXT NOT NULL,
-  content JSONB NOT NULL, -- Flexible structure for options, images, clues, items
-  correct_answer VARCHAR(255) NOT NULL,
-  difficulty VARCHAR(20) NOT NULL DEFAULT 'medium', -- 'easy', 'medium', 'hard', 'very_hard'
-  points INT NOT NULL DEFAULT 100,
-  explanation TEXT,
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+-- 3. GAME ROOMS TABLE
+CREATE TABLE game_rooms (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  room_code varchar(10) UNIQUE NOT NULL,
+  host_id text,
+  status text CHECK (status IN (
+    'lobby',
+    'round1', 'round1_results',
+    'round2', 'round2_results',
+    'round3', 'round3_results',
+    'final_results'
+  )) DEFAULT 'lobby',
+  current_round int DEFAULT 0,
+  round_started_at timestamptz,
+  round_duration_seconds int DEFAULT 15,
+  created_at timestamptz DEFAULT now()
 );
 
--- Index for fast random question querying by challenge
-CREATE INDEX IF NOT EXISTS idx_questions_challenge_active ON public.questions(challenge_id, is_active);
-
--- --------------------------------------------------------------------
--- 3. TABLE: game_sessions
--- --------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS public.game_sessions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  player_name VARCHAR(100) NOT NULL,
-  status VARCHAR(20) NOT NULL DEFAULT 'started', -- 'started', 'in_progress', 'completed', 'abandoned'
-  started_at TIMESTAMPTZ DEFAULT NOW(),
-  completed_at TIMESTAMPTZ,
-  total_score INT DEFAULT 0,
-  challenge_1_score INT DEFAULT 0,
-  challenge_2_score INT DEFAULT 0,
-  challenge_3_score INT DEFAULT 0,
-  correct_answers INT DEFAULT 0,
-  wrong_answers INT DEFAULT 0,
-  timeouts INT DEFAULT 0,
-  accuracy INT DEFAULT 0,
-  max_streak INT DEFAULT 0,
-  completion_time VARCHAR(20)
-);
-
-CREATE INDEX IF NOT EXISTS idx_game_sessions_status_score ON public.game_sessions(status, total_score DESC);
-
--- --------------------------------------------------------------------
--- 4. TABLE: session_questions (Stores assigned 15 questions per session)
--- --------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS public.session_questions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  session_id UUID NOT NULL REFERENCES public.game_sessions(id) ON DELETE CASCADE,
-  question_id UUID NOT NULL REFERENCES public.questions(id) ON DELETE CASCADE,
-  challenge_id INT NOT NULL,
-  question_order INT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_session_questions_session ON public.session_questions(session_id, question_order);
-
--- --------------------------------------------------------------------
--- 5. TABLE: player_answers
--- --------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS public.player_answers (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  session_id UUID NOT NULL REFERENCES public.game_sessions(id) ON DELETE CASCADE,
-  question_id UUID NOT NULL REFERENCES public.questions(id) ON DELETE CASCADE,
-  challenge_id INT NOT NULL,
-  selected_answer VARCHAR(255),
-  correct_answer VARCHAR(255) NOT NULL,
-  is_correct BOOLEAN NOT NULL,
-  points_earned INT DEFAULT 0,
-  time_taken INT DEFAULT 0, -- in seconds
-  answered_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(session_id, question_id) -- Prevent double submission
-);
-
--- --------------------------------------------------------------------
--- ROW LEVEL SECURITY (RLS) POLICIES
--- --------------------------------------------------------------------
-ALTER TABLE public.challenges ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.questions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.game_sessions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.session_questions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.player_answers ENABLE ROW LEVEL SECURITY;
-
--- Allow anonymous read access to active challenges & questions
-CREATE POLICY "Allow public read active challenges" ON public.challenges FOR SELECT USING (is_active = true);
-CREATE POLICY "Allow public read active questions" ON public.questions FOR SELECT USING (is_active = true);
-
--- Allow public insertion and read of game sessions & answers
-CREATE POLICY "Allow public insert sessions" ON public.game_sessions FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public update sessions" ON public.game_sessions FOR UPDATE USING (true);
-CREATE POLICY "Allow public read completed sessions for leaderboard" ON public.game_sessions FOR SELECT USING (true);
-
-CREATE POLICY "Allow public insert session_questions" ON public.session_questions FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public read session_questions" ON public.session_questions FOR SELECT USING (true);
-
-CREATE POLICY "Allow public insert player_answers" ON public.player_answers FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public read player_answers" ON public.player_answers FOR SELECT USING (true);
-
--- --------------------------------------------------------------------
--- SEED DATA: CHALLENGES DEFINITION
--- --------------------------------------------------------------------
-INSERT INTO public.challenges (id, name, slug, description, challenge_number, time_limit, points_per_question, is_active)
-VALUES
-  (1, 'AI OR REAL?', 'ai-or-real', 'Detect AI-generated synthetic images vs real photographs', 1, 10, 100, true),
-  (2, 'DECODE THE TECH', 'decode-tech', 'Decode technology concepts from visual clues and symbols', 2, 15, 150, true),
-  (3, 'AI ESCAPE ROOM', 'ai-escape-room', 'Solve AI reasoning, hallucination, prompt security, and pipeline puzzles', 3, 75, 200, true)
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, points_per_question = EXCLUDED.points_per_question;
-
--- --------------------------------------------------------------------
--- SEED DATA: 90 QUESTIONS SAMPLE INSERTS
--- --------------------------------------------------------------------
--- (Note: Full 90 question records are initialized below and synchronized via questionService & offlineQuestionBank)
-
--- ====================================================================
--- LIVE HOST-CONTROLLED SYNCHRONOUS MULTIPLAYER SCHEMA EXTENSIONS
--- ====================================================================
-
--- 6. TABLE: game_rooms
-CREATE TABLE IF NOT EXISTS public.game_rooms (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  room_code VARCHAR(10) NOT NULL UNIQUE,
-  host_id VARCHAR(100) NOT NULL,
-  status VARCHAR(30) NOT NULL DEFAULT 'lobby', -- 'lobby', 'round1', 'round1_results', 'round2', 'round2_results', 'round3', 'final_results'
-  current_round INT DEFAULT 0,
-  round_started_at TIMESTAMPTZ,
-  round_duration_seconds INT DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_game_rooms_code ON public.game_rooms(room_code);
-CREATE INDEX IF NOT EXISTS idx_game_rooms_status ON public.game_rooms(status);
-
--- 7. TABLE: room_players
-CREATE TABLE IF NOT EXISTS public.room_players (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  room_id UUID NOT NULL REFERENCES public.game_rooms(id) ON DELETE CASCADE,
-  display_name VARCHAR(100) NOT NULL,
-  device_token VARCHAR(100) NOT NULL,
-  joined_at TIMESTAMPTZ DEFAULT NOW(),
+-- 4. ROOM PLAYERS TABLE
+CREATE TABLE room_players (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  room_id uuid REFERENCES game_rooms(id) ON DELETE CASCADE,
+  display_name text NOT NULL,
+  device_token text NOT NULL,
+  has_completed_session boolean DEFAULT false,
+  joined_at timestamptz DEFAULT now(),
   UNIQUE(room_id, device_token)
 );
 
-CREATE INDEX IF NOT EXISTS idx_room_players_room ON public.room_players(room_id);
-CREATE INDEX IF NOT EXISTS idx_room_players_token ON public.room_players(room_id, device_token);
-
--- 8. TABLE: room_round_questions (Per-player 5-of-20 random assignment per round)
-CREATE TABLE IF NOT EXISTS public.room_round_questions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  room_id UUID NOT NULL REFERENCES public.game_rooms(id) ON DELETE CASCADE,
-  player_id UUID NOT NULL REFERENCES public.room_players(id) ON DELETE CASCADE,
-  round INT NOT NULL,
-  question_id VARCHAR(255) NOT NULL, -- Flexible VARCHAR string or UUID
-  question_data JSONB NOT NULL, -- Serialized question content & options
-  position INT NOT NULL, -- 1 to 5
-  created_at TIMESTAMPTZ DEFAULT NOW(),
+-- 5. ROOM ROUND QUESTIONS TABLE (PER PLAYER QUESTION SAMPLING)
+CREATE TABLE room_round_questions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  room_id uuid REFERENCES game_rooms(id) ON DELETE CASCADE,
+  player_id uuid REFERENCES room_players(id) ON DELETE CASCADE,
+  round int NOT NULL,
+  question_id uuid REFERENCES questions(id) ON DELETE CASCADE,
+  position int NOT NULL,
   UNIQUE(room_id, player_id, round, position)
 );
 
-CREATE INDEX IF NOT EXISTS idx_room_round_q_player ON public.room_round_questions(room_id, player_id, round);
-
--- 9. TABLE: room_answers (Live player answer submissions)
-CREATE TABLE IF NOT EXISTS public.room_answers (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  room_id UUID NOT NULL REFERENCES public.game_rooms(id) ON DELETE CASCADE,
-  player_id UUID NOT NULL REFERENCES public.room_players(id) ON DELETE CASCADE,
-  round INT NOT NULL,
-  question_id VARCHAR(255) NOT NULL,
-  selected_option VARCHAR(255),
-  is_correct BOOLEAN NOT NULL,
-  points_earned INT DEFAULT 0,
-  response_time_ms INT DEFAULT 0,
-  answered_at TIMESTAMPTZ DEFAULT NOW(),
+-- 6. ROOM ANSWERS TABLE
+CREATE TABLE room_answers (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  room_id uuid REFERENCES game_rooms(id) ON DELETE CASCADE,
+  player_id uuid REFERENCES room_players(id) ON DELETE CASCADE,
+  round int NOT NULL,
+  question_id uuid REFERENCES questions(id) ON DELETE CASCADE,
+  selected_option text,
+  is_correct boolean NOT NULL,
+  points_earned int DEFAULT 0,
+  response_time_ms int,
+  answered_at timestamptz DEFAULT now(),
   UNIQUE(room_id, player_id, round, question_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_room_answers_room_round ON public.room_answers(room_id, round);
-CREATE INDEX IF NOT EXISTS idx_room_answers_player ON public.room_answers(room_id, player_id);
+-- 7. ROOM LEADERBOARD VIEW
+CREATE OR REPLACE VIEW room_leaderboard AS
+SELECT 
+  rp.room_id,
+  rp.id AS player_id,
+  rp.display_name,
+  COALESCE(SUM(ra.points_earned), 0) AS total_score,
+  COALESCE(SUM(CASE WHEN ra.round = 1 THEN ra.points_earned ELSE 0 END), 0) AS round1_score,
+  COALESCE(SUM(CASE WHEN ra.round = 2 THEN ra.points_earned ELSE 0 END), 0) AS round2_score,
+  COALESCE(SUM(CASE WHEN ra.round = 3 THEN ra.points_earned ELSE 0 END), 0) AS round3_score,
+  COALESCE(COUNT(CASE WHEN ra.is_correct = true THEN 1 END), 0) AS total_correct,
+  COALESCE(COUNT(ra.id), 0) AS total_answered
+FROM room_players rp
+LEFT JOIN room_answers ra ON rp.id = ra.player_id AND rp.room_id = ra.room_id
+GROUP BY rp.room_id, rp.id, rp.display_name;
 
--- --------------------------------------------------------------------
--- ROW LEVEL SECURITY (RLS) POLICIES FOR MULTIPLAYER
--- --------------------------------------------------------------------
-ALTER TABLE public.game_rooms ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.room_players ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.room_round_questions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.room_answers ENABLE ROW LEVEL SECURITY;
+-- 8. ROW LEVEL SECURITY (RLS) POLICIES (PERMISSIVE ANON BOOTH ACCESS)
+ALTER TABLE questions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE game_rooms ENABLE ROW LEVEL SECURITY;
+ALTER TABLE room_players ENABLE ROW LEVEL SECURITY;
+ALTER TABLE room_round_questions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE room_answers ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow public insert game_rooms" ON public.game_rooms FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public select game_rooms" ON public.game_rooms FOR SELECT USING (true);
-CREATE POLICY "Allow public update game_rooms" ON public.game_rooms FOR UPDATE USING (true);
+CREATE POLICY "Allow public read access to active questions" ON questions FOR SELECT USING (true);
+CREATE POLICY "Allow public full access to game_rooms" ON game_rooms FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public full access to room_players" ON room_players FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public full access to room_round_questions" ON room_round_questions FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public full access to room_answers" ON room_answers FOR ALL USING (true) WITH CHECK (true);
 
-CREATE POLICY "Allow public insert room_players" ON public.room_players FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public select room_players" ON public.room_players FOR SELECT USING (true);
-CREATE POLICY "Allow public update room_players" ON public.room_players FOR UPDATE USING (true);
+-- 9. SUPABASE REALTIME PUBLICATION SETUP
+DROP PUBLICATION IF EXISTS supabase_realtime;
+CREATE PUBLICATION supabase_realtime FOR TABLE game_rooms, room_players, room_answers;
 
-CREATE POLICY "Allow public insert room_round_questions" ON public.room_round_questions FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public select room_round_questions" ON public.room_round_questions FOR SELECT USING (true);
+-- 10. SEED DATA (20 QUESTIONS PER ROUND = 60 TOTAL)
 
-CREATE POLICY "Allow public insert room_answers" ON public.room_answers FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public select room_answers" ON public.room_answers FOR SELECT USING (true);
+-- ROUND 1 SEED (20 Image Comparison Questions: real_image_url vs ai_image_url)
+INSERT INTO questions (round, question_type, prompt_text, real_image_url, ai_image_url, explanation) VALUES
+(1, 'image_comparison', 'Which portrait is AI-generated?', '/images/round1/q01_real.jpg', '/images/round1/q01_ai.jpg', 'The AI portrait shows pupil reflection asymmetry.'),
+(1, 'image_comparison', 'Spot the AI-synthesized architectural render:', '/images/round1/q02_real.jpg', '/images/round1/q02_ai.jpg', 'The AI image contains non-physical perspective distortions.'),
+(1, 'image_comparison', 'Which futuristic landscape was generated by AI?', '/images/round1/q03_real.jpg', '/images/round1/q03_ai.jpg', 'The AI landscape uses synthetic diffusion brushwork.'),
+(1, 'image_comparison', 'Which animal photo is computer-generated?', '/images/round1/q04_real.jpg', '/images/round1/q04_ai.jpg', 'The AI animal photo has synthetic fur texture blurring.'),
+(1, 'image_comparison', 'Identify the AI-rendered gourmet dish:', '/images/round1/q05_real.jpg', '/images/round1/q05_ai.jpg', 'The AI dish features unrealistic specular reflections on garnish.'),
+(1, 'image_comparison', 'Which neon cyberpunk street is AI art?', '/images/round1/q06_real.jpg', '/images/round1/q06_ai.jpg', 'The AI street photo contains unreadable text artifacts on neon signs.'),
+(1, 'image_comparison', 'Which workspace photo was generated by Midjourney?', '/images/round1/q07_real.jpg', '/images/round1/q07_ai.jpg', 'The AI workspace exhibits distorted keyboard key shapes.'),
+(1, 'image_comparison', 'Spot the AI-generated nature waterfall:', '/images/round1/q08_real.jpg', '/images/round1/q08_ai.jpg', 'The AI waterfall features physics-defying water flow lines.'),
+(1, 'image_comparison', 'Which car concept render is AI synthetic art?', '/images/round1/q09_real.jpg', '/images/round1/q09_ai.jpg', 'The AI car concept shows asymmetrical wheel rim geometry.'),
+(1, 'image_comparison', 'Which hands photo exhibits AI generation artifacts?', '/images/round1/q10_real.jpg', '/images/round1/q10_ai.jpg', 'The AI hands photo shows unnatural finger blending.'),
+(1, 'image_comparison', 'Identify the AI-synthesized astronaut on Mars:', '/images/round1/q11_real.jpg', '/images/round1/q11_ai.jpg', 'The AI astronaut has synthetic visor reflection anomalies.'),
+(1, 'image_comparison', 'Which coffee cup photo is AI-generated?', '/images/round1/q12_real.jpg', '/images/round1/q12_ai.jpg', 'The AI coffee cup shows steam patterns defying thermal physics.'),
+(1, 'image_comparison', 'Which abstract oil painting is AI diffusion art?', '/images/round1/q13_real.jpg', '/images/round1/q13_ai.jpg', 'The AI painting contains ultra-fine pixel noise without canvas texture.'),
+(1, 'image_comparison', 'Spot the AI-rendered vintage camera photo:', '/images/round1/q14_real.jpg', '/images/round1/q14_ai.jpg', 'The AI camera has unreadable gibberish dial etchings.'),
+(1, 'image_comparison', 'Which robot avatar is AI-generated concept art?', '/images/round1/q15_real.jpg', '/images/round1/q15_ai.jpg', 'The AI robot shows floating panel seams and non-functional wires.'),
+(1, 'image_comparison', 'Which interior room design is AI-rendered?', '/images/round1/q16_real.jpg', '/images/round1/q16_ai.jpg', 'The AI room features table legs that do not touch the floor.'),
+(1, 'image_comparison', 'Spot the AI-synthesized cat portrait:', '/images/round1/q17_real.jpg', '/images/round1/q17_ai.jpg', 'The AI cat portrait shows irregular pupil shapes and blurred whiskers.'),
+(1, 'image_comparison', 'Which concert crowd photo is AI diffusion art?', '/images/round1/q18_real.jpg', '/images/round1/q18_ai.jpg', 'The AI concert photo exhibits face melt on background crowd members.'),
+(1, 'image_comparison', 'Which tropical beach resort is AI-generated?', '/images/round1/q19_real.jpg', '/images/round1/q19_ai.jpg', 'The AI resort shows palm trees merging directly into water waves.'),
+(1, 'image_comparison', 'Identify the AI-rendered mechanical watch gear:', '/images/round1/q20_real.jpg', '/images/round1/q20_ai.jpg', 'The AI watch gear features non-interlocking gear teeth.');
 
--- --------------------------------------------------------------------
--- ENABLE SUPABASE REALTIME REPLICATION FOR LIVE BOOTH PLAY
--- --------------------------------------------------------------------
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
-    ALTER PUBLICATION supabase_realtime ADD TABLE public.game_rooms, public.room_players, public.room_answers;
-  END IF;
-EXCEPTION
-  WHEN OTHERS THEN NULL;
-END $$;
+-- ROUND 2 SEED (20 Logo & Tech MCQ Questions)
+INSERT INTO questions (round, question_type, prompt_text, logo_url, options, correct_option, explanation) VALUES
+(2, 'logo_mcq', 'Identify this AI laboratory responsible for ChatGPT and GPT-4:', '/images/round2/openai.png', '["OpenAI", "Anthropic", "DeepMind", "Mistral AI"]', 'OpenAI', 'OpenAI created ChatGPT, GPT-4, and DALL-E.'),
+(2, 'logo_mcq', 'Which AI safety lab created the Claude LLM series?', '/images/round2/anthropic.png', '["OpenAI", "Anthropic", "Cohere", "Stability AI"]', 'Anthropic', 'Anthropic produces the Claude family of AI models.'),
+(2, 'logo_mcq', 'Identify the creator of AlphaFold and Gemini:', '/images/round2/deepmind.png', '["Google DeepMind", "Meta AI", "Microsoft Research", "IBM Watson"]', 'Google DeepMind', 'Google DeepMind created AlphaFold and Gemini.'),
+(2, 'logo_mcq', 'Which open-weight AI company created Llama 3?', '/images/round2/meta.png', '["Meta AI", "OpenAI", "Apple AI", "Amazon Bedrock"]', 'Meta AI', 'Meta AI developed the open-source Llama model series.'),
+(2, 'logo_mcq', 'Which cloud provider developed the Bedrock AI platform?', '/images/round2/aws.png', '["AWS", "Microsoft Azure", "Google Cloud", "Oracle Cloud"]', 'AWS', 'AWS provides managed foundation models through Bedrock.'),
+(2, 'logo_mcq', 'Identify the creator of Stable Diffusion image models:', '/images/round2/stability.png', '["Stability AI", "Midjourney", "Runway", "Flux"]', 'Stability AI', 'Stability AI developed Stable Diffusion.'),
+(2, 'logo_mcq', 'Which AI video synthesis startup created Gen-2 and Sora rivals?', '/images/round2/runway.png', '["Runway", "Pika", "Sora", "Synthesia"]', 'Runway', 'Runway built Gen-1, Gen-2, and Gen-3 Alpha video generators.'),
+(2, 'logo_mcq', 'Which GPU giant powers 90%+ of global AI model training?', '/images/round2/nvidia.png', '["NVIDIA", "AMD", "Intel", "Qualcomm"]', 'NVIDIA', 'NVIDIA produces H100, B200, and CUDA AI computing platforms.'),
+(2, 'logo_mcq', 'Identify this open-source AI model hub & repository:', '/images/round2/huggingface.png', '["Hugging Face", "GitHub", "Kaggle", "Replicate"]', 'Hugging Face', 'Hugging Face is the premier hub for open AI models and datasets.'),
+(2, 'logo_mcq', 'Which French AI startup created Mixtral 8x7B?', '/images/round2/mistral.png', '["Mistral AI", "Aleph Alpha", "LightOn", "Kyutai"]', 'Mistral AI', 'Mistral AI produces open and commercial European LLMs.'),
+(2, 'logo_mcq', 'Which AI search engine answers queries with cited web sources?', '/images/round2/perplexity.png', '["Perplexity AI", "SearchGPT", "You.com", "DuckDuckGo"]', 'Perplexity AI', 'Perplexity AI combines web search with real-time LLM summaries.'),
+(2, 'logo_mcq', 'Which enterprise AI search platform created Command R+?', '/images/round2/cohere.png', '["Cohere", "AI21 Labs", "Writer", "Glean"]', 'Cohere', 'Cohere builds enterprise RAG and LLM systems.'),
+(2, 'logo_mcq', 'Identify the developer of the Copilot AI coding assistant:', '/images/round2/microsoft.png', '["Microsoft", "Apple", "Oracle", "IBM"]', 'Microsoft', 'Microsoft integrated Copilot across Windows, GitHub, and Office.'),
+(2, 'logo_mcq', 'Which data platform company acquired Databricks MosaicML?', '/images/round2/databricks.png', '["Databricks", "Snowflake", "Teradata", "Cloudera"]', 'Databricks', 'Databricks powers enterprise data intelligence and Mosaic AI.'),
+(2, 'logo_mcq', 'Identify this vector database company built for RAG applications:', '/images/round2/pinecone.png', '["Pinecone", "Weaviate", "Qdrant", "Chroma"]', 'Pinecone', 'Pinecone is a high-performance cloud vector database.'),
+(2, 'logo_mcq', 'Which AI music generation platform creates full songs from text?', '/images/round2/suno.png', '["Suno", "Udio", "ElevenLabs", "Symphony"]', 'Suno', 'Suno AI generates vocal and instrumental music tracks.'),
+(2, 'logo_mcq', 'Which leader in AI voice cloning creates hyper-realistic text-to-speech?', '/images/round2/elevenlabs.png', '["ElevenLabs", "Play.ht", "Murf AI", "Descript"]', 'ElevenLabs', 'ElevenLabs provides state-of-the-art voice synthesis and cloning.'),
+(2, 'logo_mcq', 'Which data cloud platform built the Cortex AI engine?', '/images/round2/snowflake.png', '["Snowflake", "Databricks", "BigQuery", "Redshift"]', 'Snowflake', 'Snowflake enables enterprise LLM apps inside its data cloud.'),
+(2, 'logo_mcq', 'Which company created the Grok AI chatbot and Colossus supercluster?', '/images/round2/xai.png', '["xAI", "Tesla", "Neuralink", "Starlink"]', 'xAI', 'xAI created Grok and built the Memphis supercomputer.'),
+(2, 'logo_mcq', 'Identify the AI framework maintained by PyTorch Foundation:', '/images/round2/pytorch.png', '["PyTorch", "TensorFlow", "JAX", "Keras"]', 'PyTorch', 'PyTorch is the leading deep learning framework for AI research.');
+
+-- ROUND 3 SEED (20 Emoji Tech Decode Questions)
+INSERT INTO questions (round, question_type, prompt_text, options, correct_option, explanation) VALUES
+(3, 'emoji_mcq', '☁️ 💻 🌐', '["Cloud Computing", "Computer Vision", "Blockchain", "Compiler"]', 'Cloud Computing', 'Cloud Computing delivers infrastructure and software over the global internet.'),
+(3, 'emoji_mcq', '🔐 👤 🎫', '["Authentication", "Machine Learning", "API Gateway", "Data Mining"]', 'Authentication', 'Authentication verifies digital identity before granting system access.'),
+(3, 'emoji_mcq', '👁️ 📷 🤖', '["Computer Vision", "NLP", "Quantum Computing", "Sharding"]', 'Computer Vision', 'Computer Vision enables machines to analyze and interpret visual input.'),
+(3, 'emoji_mcq', '📦 🚢 ⚡', '["Containerization (Docker)", "Quantum Computing", "Mainframe", "Data Lake"]', 'Containerization (Docker)', 'Containerization packages application code and dependencies into isolated runtimes.'),
+(3, 'emoji_mcq', '🧠 ⚡ 📈', '["Neural Network", "Firewall", "Load Balancer", "DNS Server"]', 'Neural Network', 'Neural Networks mimic brain nodes to process complex pattern relationships.'),
+(3, 'emoji_mcq', '💬 🤖 🗣️', '["Chatbot / LLM", "Database Index", "Microservice", "CDN"]', 'Chatbot / LLM', 'Large Language Models process natural language conversation.'),
+(3, 'emoji_mcq', '🔍 📚 ⚡', '["Retrieval-Augmented Generation (RAG)", "Garbage Collection", "Bitwise Shift", "Overfitting"]', 'Retrieval-Augmented Generation (RAG)', 'RAG retrieves external factual knowledge to ground LLM responses.'),
+(3, 'emoji_mcq', '🎯 📐 🎯', '["Fine-Tuning", "Zero-Shot Learning", "Prompt Injection", "Latency"]', 'Fine-Tuning', 'Fine-Tuning adapts a pre-trained model on domain-specific target data.'),
+(3, 'emoji_mcq', '🎨 🖌️ 🤖', '["Generative AI Art", "OCR", "Web Scraping", "Regression"]', 'Generative AI Art', 'Generative models create novel images from text prompts.'),
+(3, 'emoji_mcq', '🛡️ 🛑 💉', '["Prompt Injection Defense", "SQL Injection", "XSS Attack", "Buffer Overflow"]', 'Prompt Injection Defense', 'Defenses protect LLMs against malicious adversarial prompt overrides.'),
+(3, 'emoji_mcq', '⚡ ⏱️ 🚀', '["Low Latency Inference", "Batch Training", "Cold Storage", "Epoch"]', 'Low Latency Inference', 'Fast inference speed reduces response time for live user requests.'),
+(3, 'emoji_mcq', '📊 🏷️ 📌', '["Data Labeling", "Encryption", "Unit Testing", "Recursion"]', 'Data Labeling', 'Data labeling annotates raw data to train supervised machine learning models.'),
+(3, 'emoji_mcq', '🌌 ⚛️ 💻', '["Quantum Machine Learning", "Assembly Language", "CSS Flexbox", "RAID Array"]', 'Quantum Machine Learning', 'Quantum computing leverages qubits for high-dimensional AI optimizations.'),
+(3, 'emoji_mcq', '🤖 🚗 🛑', '["Autonomous Driving AI", "CI/CD Pipeline", "Static Analysis", "DNS Lookup"]', 'Autonomous Driving AI', 'Self-driving vehicles use AI computer vision and sensor fusion for navigation.'),
+(3, 'emoji_mcq', '🔄 🔁 🔁', '["Transformer Attention", "Infinite Loop", "Deadlock", "Memory Leak"]', 'Transformer Attention', 'Attention mechanisms weigh token relationships in sequence modeling.'),
+(3, 'emoji_mcq', '🗣️ ➡️ 📝', '["Speech-to-Text (ASR)", "Optical Character Recognition", "Compiler", "Tokenization"]', 'Speech-to-Text (ASR)', 'Automated Speech Recognition converts audio voice into written text.'),
+(3, 'emoji_mcq', '📝 ➡️ 🔊', '["Text-to-Speech (TTS)", "Data Compression", "Hash Table", "Load Balancing"]', 'Text-to-Speech (TTS)', 'Text-to-Speech synthesizes human-like voice audio from written text.'),
+(3, 'emoji_mcq', '🤖 🤝 👨‍💻', '["Human-in-the-Loop", "Unsupervised Clustering", "Dark Data", "Shadow IT"]', 'Human-in-the-Loop', 'Human-in-the-loop integrates human feedback (RLHF) to align AI output.'),
+(3, 'emoji_mcq', ' VECTOR 📐 🗄️', '["Vector Database", "Relational Database", "CSV File", "RAM Cache"]', 'Vector Database', 'Vector databases index high-dimensional embeddings for semantic search.'),
+(3, 'emoji_mcq', '⚖️ 📈 📉', '["Model Drift", "Backpropagation", "Gradient Descent", "Cross-Validation"]', 'Model Drift', 'Model drift occurs when real-world data shifts away from training distribution.');
