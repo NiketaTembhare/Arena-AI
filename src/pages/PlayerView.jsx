@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { User, LogIn, Clock, Trophy, Sparkles, CheckCircle2, Shield, ArrowRight, Hourglass } from 'lucide-react';
-import { joinRoom, getRoomByCode, getPlayerRoundQuestions, submitRoomAnswer, subscribeToRoom, fetchRoomAnswers } from '../services/roomService';
+import { joinRoom, getRoomByCode, getPlayerRoundQuestions, submitRoomAnswer, subscribeToRoom, fetchRoomAnswers, getAllowReplaysSetting } from '../services/roomService';
 import { Challenge1View } from '../challenges/Challenge1View';
 import { Challenge2View } from '../challenges/Challenge2View';
 import { Challenge3View } from '../challenges/Challenge3View';
@@ -243,11 +243,14 @@ export const PlayerView = ({ defaultRoomCode = '', onBackHome }) => {
 
   // Render Join Form if not in a session
   if (!session) {
+    const allowReplays = getAllowReplaysSetting();
+    const isBlockedByRepeatPlay = hasPlayedToday && !allowReplays;
+
     return (
       <div className="w-full max-w-md mx-auto px-4 py-12 flex flex-col items-center justify-center min-h-[calc(100vh-100px)] relative z-10">
         
-        {/* Soft Repeat-Player Deterrent Card */}
-        {hasPlayedToday ? (
+        {/* Soft Repeat-Player Deterrent Card (only shown if replays disabled in config) */}
+        {isBlockedByRepeatPlay ? (
           <div className="glass-panel-glow p-8 rounded-3xl w-full text-center border-2 border-amber-400 flex flex-col items-center gap-4">
             <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-400 flex items-center justify-center text-amber-300 text-3xl">
               ⭐
@@ -308,7 +311,8 @@ export const PlayerView = ({ defaultRoomCode = '', onBackHome }) => {
                     placeholder="e.g. ARENA"
                     maxLength={8}
                     required
-                    className="input-cyber w-full text-center font-heading font-black text-2xl tracking-widest uppercase py-3"
+                    className="input-cyber w-full text-center font-heading font-black text-2xl tracking-widest uppercase py-3 text-white bg-slate-950 border-cyan-400"
+                    style={{ color: '#ffffff', backgroundColor: '#0b1120' }}
                   />
                 </div>
               )}
@@ -325,7 +329,8 @@ export const PlayerView = ({ defaultRoomCode = '', onBackHome }) => {
                   placeholder="Enter your name"
                   maxLength={20}
                   required
-                  className="input-cyber w-full py-3"
+                  className="input-cyber w-full py-3.5 px-4 text-base font-bold text-white bg-slate-950 border border-cyan-400/60 focus:border-cyan-400 focus:bg-slate-900 focus:text-white rounded-2xl"
+                  style={{ color: '#ffffff', backgroundColor: '#0b1120' }}
                 />
               </div>
 

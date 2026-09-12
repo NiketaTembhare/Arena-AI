@@ -536,3 +536,20 @@ export const toggleQuestionActive = async (id, currentIsActive) => {
   return { id, is_active: !currentIsActive };
 };
 
+// Replay Feature Config Helpers
+export const getAllowReplaysSetting = () => {
+  try {
+    const val = localStorage.getItem('ai_arena_allow_replays');
+    return val === 'true'; // Default is false (host/admin can toggle ON)
+  } catch (e) {
+    return false;
+  }
+};
+
+export const setAllowReplaysSetting = (enabled) => {
+  try {
+    localStorage.setItem('ai_arena_allow_replays', String(enabled));
+  } catch (e) {}
+};
+
+

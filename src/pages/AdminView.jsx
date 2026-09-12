@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Plus, Edit2, CheckCircle, XCircle, Filter, ArrowLeft, RefreshCw } from 'lucide-react';
-import { fetchAdminQuestions, createQuestion, updateQuestion, toggleQuestionActive } from '../services/roomService';
+import { Shield, Plus, Edit2, CheckCircle, XCircle, Filter, ArrowLeft, RefreshCw, RotateCcw } from 'lucide-react';
+import { fetchAdminQuestions, createQuestion, updateQuestion, toggleQuestionActive, getAllowReplaysSetting, setAllowReplaysSetting } from '../services/roomService';
 import { audioEngine } from '../game/audioEngine';
 
 export const AdminView = ({ onBackHome }) => {
@@ -8,9 +8,17 @@ export const AdminView = ({ onBackHome }) => {
   const [pin, setPin] = useState('');
   const [pinError, setPinError] = useState('');
 
+  const [allowReplays, setAllowReplaysState] = useState(getAllowReplaysSetting());
   const [questions, setQuestions] = useState([]);
   const [roundFilter, setRoundFilter] = useState('all'); // 'all' | '1' | '2' | '3'
   const [isLoading, setIsLoading] = useState(false);
+
+  const handleToggleReplays = () => {
+    audioEngine.playClick();
+    const nextState = !allowReplays;
+    setAllowReplaysSetting(nextState);
+    setAllowReplaysState(nextState);
+  };
 
   // Modal State for Add/Edit
   const [showModal, setShowModal] = useState(false);
@@ -225,6 +233,31 @@ export const AdminView = ({ onBackHome }) => {
             <span>ADD QUESTION</span>
           </button>
         </div>
+      </div>
+
+      {/* Global Expo Replay Settings Toggle Panel */}
+      <div className="glass-panel p-6 rounded-3xl border border-cyan-500/40 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <RotateCcw className="w-5 h-5 text-amber-400" />
+            <h3 className="font-heading font-bold text-lg text-white">ALLOW PLAYER REPLAYS</h3>
+          </div>
+          <p className="text-xs text-slate-300 mt-1 max-w-2xl">
+            When <strong>ENABLED (ON)</strong>, players who completed a match can join again immediately in new rooms without being blocked. When <strong>DISABLED (OFF)</strong>, repeat players see the "Played Today" notice (host PIN override required).
+          </p>
+        </div>
+
+        <button
+          onClick={handleToggleReplays}
+          className={`px-5 py-3 rounded-2xl font-mono text-xs font-bold border transition-all flex items-center gap-2 shrink-0 ${
+            allowReplays
+              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.3)]'
+              : 'bg-rose-500/20 text-rose-300 border-rose-400/50'
+          }`}
+        >
+          <span className={`w-3 h-3 rounded-full ${allowReplays ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'}`} />
+          <span>{allowReplays ? 'REPLAYS ENABLED (ON)' : 'REPLAYS BLOCKED (OFF)'}</span>
+        </button>
       </div>
 
       {/* Filter Tabs */}
