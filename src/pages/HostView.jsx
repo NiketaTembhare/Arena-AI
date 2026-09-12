@@ -12,15 +12,19 @@ export const HostView = ({ onBackHome }) => {
   const [isStarting, setIsStarting] = useState(false);
   const timerRef = useRef(null);
 
-  // Restore existing host room on mount
+  // Restore existing host room on mount from DB / storage
   useEffect(() => {
     const stored = getHostRoomFromStorage();
-    if (stored) {
-      setRoom(stored);
-      getRoomPlayers(stored.id).then(setPlayers);
-      fetchRoomAnswers(stored.id).then(setAnswers);
+    if (stored && stored.room_code) {
+      getRoomByCode(stored.room_code).then(rm => {
+        const activeRoom = rm || stored;
+        setRoom(activeRoom);
+        getRoomPlayers(activeRoom.id).then(setPlayers);
+        fetchRoomAnswers(activeRoom.id).then(setAnswers);
+      });
     }
   }, []);
+
 
   // Subscriptions for player join & answer submission
   useEffect(() => {
