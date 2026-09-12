@@ -33,6 +33,8 @@ export const PlayerView = ({ defaultRoomCode = '', onBackHome }) => {
 
   const isRoomPrefilled = Boolean(defaultRoomCode);
 
+  const [latestActiveRoom, setLatestActiveRoom] = useState(null);
+
   // Check repeat player flag on mount
   useEffect(() => {
     try {
@@ -50,16 +52,60 @@ export const PlayerView = ({ defaultRoomCode = '', onBackHome }) => {
       if (stored) {
         const parsed = JSON.parse(stored);
         if (parsed && parsed.roomCode && parsed.player) {
+          // If URL has a specific room code parameter that differs from stored session room, clear old session
+          if (defaultRoomCode && parsed.roomCode !== defaultRoomCode.toUpperCase()) {
+            localStorage.removeItem('ai_arena_player_session_v1');
+            return;
+          }
+
           getRoomByCode(parsed.roomCode).then(rm => {
             if (rm) {
               setSession({ room: rm, player: parsed.player });
               setRoomState(rm);
+              if (parsed.player.display_name) setPlayerName(parsed.player.display_name);
             }
           });
         }
       }
     } catch (e) {}
-  }, []);
+  }, [defaultRoomCode]);
+
+  // Poll for new active room creation while on final_results screen
+  useEffect(() => {
+    if (roomState?.status === 'final_results') {
+      const checkNewRoom = async () => {
+        const latest = await getLatestRoom();
+        if (latest && latest.id !== session?.room?.id && latest.status === 'lobby') {
+          setLatestActiveRoom(latest);
+        } else {
+          setLatestActiveRoom(null);
+        }
+      };
+
+      checkNewRoom();
+      const interval = setInterval(checkNewRoom, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [roomState?.status, session?.room?.id]);
+
+  const handlePlayAgain = async () => {
+    audioEngine.playClick();
+    try {
+      localStorage.removeItem('ai_arena_player_session_v1');
+    } catch (e) {}
+    setSession(null);
+    setRoomState(null);
+    setPlayerAnswers([]);
+    setPlayerScore(0);
+
+    const latest = await getLatestRoom();
+    if (latest && latest.room_code) {
+      setRoomCode(latest.room_code);
+    }
+    setTimeout(() => {
+      nameInputRef.current?.focus();
+    }, 100);
+  };
 
   // Pre-fill room code from props & focus name input
   useEffect(() => {
@@ -554,6 +600,9 @@ export const PlayerView = ({ defaultRoomCode = '', onBackHome }) => {
           </div>
           <span className="text-xs font-mono text-amber-400 uppercase tracking-widest">MATCH COMPLETED</span>
           <h3 className="font-heading font-black text-3xl text-white">{session.player.display_name}</h3>
+          <span className="text-xs font-mono text-cyan-300 bg-slate-950 px-3 py-1 rounded-xl border border-slate-800">
+            ROOM CODE: {session.room.room_code}
+          </span>
 
           <div className="my-2 p-6 rounded-2xl bg-slate-950/80 border border-slate-800 w-full flex flex-col items-center gap-2">
             <span className="text-xs font-mono text-slate-400">TOTAL SCORE</span>
@@ -563,7 +612,37 @@ export const PlayerView = ({ defaultRoomCode = '', onBackHome }) => {
             </span>
           </div>
 
+          {/* Banner Notification if Host created a NEW EVENT while on results screen */}
+          {latestActiveRoom && (
+            <div className="w-full p-4 rounded-2xl bg-emerald-950/90 border-2 border-emerald-400 flex flex-col items-center gap-2 animate-bounce">
+              <span className="text-xs font-mono text-emerald-300 font-bold uppercase tracking-wider">
+                ⚡ NEW BOOTH MATCH OPEN ({latestActiveRoom.room_code})!
+              </span>
+              <button
+                onClick={async () => {
+                  audioEngine.playClick();
+                  try { localStorage.removeItem('ai_arena_player_session_v1'); } catch (e) {}
+                  setSession(null);
+                  setRoomState(null);
+                  setRoomCode(latestActiveRoom.room_code);
+                }}
+                className="btn-cyber-primary w-full py-3 text-xs bg-emerald-500 border-emerald-300 text-slate-950 font-bold"
+              >
+                JOIN NEW MATCH ({latestActiveRoom.room_code}) ➔
+              </button>
+            </div>
+          )}
+
           <p className="text-xs text-slate-300">Look at the Big Screen for final podium positions!</p>
+
+          {/* PLAY AGAIN / JOIN NEW MATCH BUTTON */}
+          <button
+            onClick={handlePlayAgain}
+            className="btn-cyber-primary w-full py-4 text-sm mt-2 shadow-[0_0_25px_rgba(0,240,255,0.4)] flex items-center justify-center gap-2"
+          >
+            <Sparkles className="w-5 h-5" />
+            <span>PLAY AGAIN / JOIN NEW MATCH</span>
+          </button>
         </div>
       </div>
     );
