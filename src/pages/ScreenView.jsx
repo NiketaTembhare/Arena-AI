@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Trophy, Users, Clock, Volume2, VolumeX, Sparkles, Zap, Award, Flame, Hourglass } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { getRoomByCode, getLatestRoom, getRoomPlayers, fetchRoomAnswers, subscribeToRoom, subscribeToRoomPlayers, subscribeToRoomAnswers } from '../services/roomService';
 import { audioEngine } from '../game/audioEngine';
 import { GAME_CONFIG } from '../game/config';
@@ -224,7 +225,7 @@ export const ScreenView = ({ defaultRoomCode = '', onBackHome }) => {
             </span>
 
             <div className="p-4 rounded-3xl bg-white border-4 border-cyan-400 shadow-[0_0_40px_rgba(255,255,255,0.8)]">
-              <img src={qrCodeUrl} alt="Join QR Code" className="w-64 h-64 rounded-xl" />
+              <QRCodeSVG value={joinUrl} size={256} fgColor="#000000" bgColor="#ffffff" level="H" className="rounded-xl" />
             </div>
 
             <div className="flex flex-col gap-1">

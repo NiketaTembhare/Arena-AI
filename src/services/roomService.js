@@ -247,7 +247,8 @@ export const startRoomRound = async (roomId, roundNumber) => {
     pool = (OFFLINE_QUESTION_BANK[key] || []).map(q => formatAndRandomizeQuestion(q));
   }
 
-  const roundStartedAt = new Date().toISOString();
+  // Server-Timed 3s Countdown: round_started_at is set 3 seconds into the future
+  const roundStartedAt = new Date(Date.now() + 3000).toISOString();
 
   // 2. For each player, generate a unique random 5-question selection & ordering
   if (isSupabaseConfigured() && supabase && !roomId.startsWith('room_')) {

@@ -120,31 +120,7 @@ export const PlayerView = ({ defaultRoomCode = '', onBackHome }) => {
 
   const [countdownVal, setCountdownVal] = useState(0);
 
-  // 3-Second Round Start Countdown Effect
-  useEffect(() => {
-    if (roomState && (roomState.status === 'round1' || roomState.status === 'round2' || roomState.status === 'round3')) {
-      const startedAt = new Date(roomState.round_started_at).getTime();
-      const elapsedMs = Date.now() - startedAt;
-
-      if (elapsedMs < 3000) {
-        setCountdownVal(3);
-        const cdTimer = setInterval(() => {
-          setCountdownVal(prev => {
-            if (prev <= 1) {
-              clearInterval(cdTimer);
-              return 0;
-            }
-            audioEngine.playTick();
-            return prev - 1;
-          });
-        }, 1000);
-
-        return () => clearInterval(cdTimer);
-      }
-    }
-  }, [roomState?.status, roomState?.round_started_at]);
-
-  // SERVER-AUTHORITATIVE TIMER: Compute remaining time directly from round_started_at
+  // SERVER-AUTHORITATIVE COUNTDOWN & IN-ROUND TIMER
   useEffect(() => {
     if (timerRef.current) clearInterval(timerRef.current);
 
@@ -153,17 +129,27 @@ export const PlayerView = ({ defaultRoomCode = '', onBackHome }) => {
       const duration = roomState.round_duration_seconds;
 
       const tickTimer = () => {
-        const elapsedSec = Math.floor((Date.now() - startedAt) / 1000);
-        const remaining = Math.max(0, duration - elapsedSec);
-        setTimerRemaining(remaining);
+        const now = Date.now();
+        if (now < startedAt) {
+          // Server-timed countdown phase
+          const remainingCd = Math.ceil((startedAt - now) / 1000);
+          setCountdownVal(remainingCd);
+          setTimerRemaining(duration);
+        } else {
+          // Question timer phase
+          setCountdownVal(0);
+          const elapsedSec = Math.floor((now - startedAt) / 1000);
+          const remaining = Math.max(0, duration - elapsedSec);
+          setTimerRemaining(remaining);
 
-        if (remaining <= 4 && remaining > 0) {
-          audioEngine.playTick();
+          if (remaining <= 4 && remaining > 0) {
+            audioEngine.playTick();
+          }
         }
       };
 
       tickTimer();
-      timerRef.current = setInterval(tickTimer, 1000);
+      timerRef.current = setInterval(tickTimer, 200);
     }
 
     return () => {
