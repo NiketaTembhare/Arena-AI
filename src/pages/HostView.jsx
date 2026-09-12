@@ -170,9 +170,9 @@ export const HostView = ({ onBackHome }) => {
               👑
             </div>
             <div>
-              <h3 className="font-heading font-bold text-2xl text-white">Create a Multiplayer Room</h3>
+              <h3 className="font-heading font-bold text-2xl text-white">Start a New Booth Event</h3>
               <p className="text-sm text-slate-300 max-w-md mt-1">
-                Generate a short room code for players to join on their mobile phones.
+                Archives any previous session and starts a fresh live room for booth players.
               </p>
             </div>
 
@@ -182,7 +182,7 @@ export const HostView = ({ onBackHome }) => {
               className="btn-cyber-primary py-4 px-8 text-base shadow-[0_0_30px_rgba(6,182,212,0.4)]"
             >
               <Sparkles className="w-5 h-5" />
-              <span>{isStarting ? "CREATING ROOM..." : "CREATE EXPO ROOM"}</span>
+              <span>{isStarting ? "STARTING NEW EVENT..." : "START NEW EVENT"}</span>
             </button>
           </div>
         ) : (
@@ -192,9 +192,9 @@ export const HostView = ({ onBackHome }) => {
             {/* Top Bar: Room Code & Status */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 rounded-2xl bg-slate-950/80 border border-cyan-500/30 text-center md:text-left items-center">
               <div className="flex flex-col">
-                <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest">ROOM CODE</span>
+                <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest">ROOM CODE (FOR TROUBLESHOOTING ONLY)</span>
                 <div className="flex items-center justify-center md:justify-start gap-3">
-                  <span className="font-heading font-black text-4xl text-cyan-300 tracking-wider">
+                  <span className="font-heading font-black text-3xl text-cyan-300 tracking-wider">
                     {room.room_code}
                   </span>
                   <a

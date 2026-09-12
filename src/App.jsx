@@ -57,6 +57,7 @@ export default function App() {
       <ArenaHeader
         isMuted={isMuted}
         onToggleMute={handleToggleMute}
+        onBackHome={handleResetToHome}
       />
 
       {/* Main View Routing */}

@@ -13,7 +13,8 @@ export const ArenaHeader = ({
   onToggleMute,
   expoMode = false,
   onToggleExpoMode,
-  playerName = ""
+  playerName = "",
+  onBackHome
 }) => {
   const challengeTitles = {
     1: "AI OR REAL?",
@@ -28,13 +29,17 @@ export const ArenaHeader = ({
       <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
         
         {/* Left: Brand / Title */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-cyan-500/20 border border-cyan-400 flex items-center justify-center text-cyan-400 font-bold shadow-[0_0_15px_rgba(0,240,255,0.4)]">
+        <div
+          onClick={onBackHome}
+          className={`flex items-center gap-3 ${onBackHome ? 'cursor-pointer group select-none' : ''}`}
+          title="Return to Home"
+        >
+          <div className="w-10 h-10 rounded-lg bg-cyan-500/20 border border-cyan-400 flex items-center justify-center text-cyan-400 font-bold shadow-[0_0_15px_rgba(0,240,255,0.4)] group-hover:scale-105 transition-transform">
             ⚡
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="font-heading font-extrabold text-lg sm:text-xl tracking-wider text-white">
+              <h1 className="font-heading font-extrabold text-lg sm:text-xl tracking-wider text-white group-hover:text-cyan-300 transition-colors">
                 AI ARENA
               </h1>
               {expoMode && (

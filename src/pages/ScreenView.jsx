@@ -212,8 +212,8 @@ export const ScreenView = ({ defaultRoomCode = '', onBackHome }) => {
           )}
 
           <div className="flex flex-col text-right font-mono">
-            <span className="text-[10px] text-slate-400">ROOM CODE</span>
-            <span className="font-heading font-black text-3xl text-cyan-300">{room.room_code}</span>
+            <span className="text-[10px] text-slate-400">ROOM CODE (TROUBLESHOOTING)</span>
+            <span className="font-heading font-black text-2xl text-cyan-300">{room.room_code}</span>
           </div>
         </div>
       </div>
@@ -233,8 +233,8 @@ export const ScreenView = ({ defaultRoomCode = '', onBackHome }) => {
             </div>
 
             <div className="flex flex-col gap-1">
-              <span className="text-xs font-mono text-slate-400">OR OPEN URL</span>
-              <span className="font-mono text-sm font-bold text-cyan-300 bg-slate-950 px-4 py-2 rounded-xl border border-slate-800">
+              <span className="text-[10px] font-mono text-slate-500">OR OPEN URL (TROUBLESHOOTING ONLY)</span>
+              <span className="font-mono text-xs font-bold text-cyan-300 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800">
                 {window.location.host}/?room={room.room_code}
               </span>
             </div>

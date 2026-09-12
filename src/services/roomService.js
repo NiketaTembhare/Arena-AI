@@ -45,6 +45,12 @@ export const createRoom = async () => {
 
   if (isSupabaseConfigured() && supabase) {
     try {
+      // Single Active Room Enforcer: Archive any previous unfinished rooms to final_results
+      await supabase
+        .from('game_rooms')
+        .update({ status: 'final_results' })
+        .neq('status', 'final_results');
+
       const { data, error } = await supabase
         .from('game_rooms')
         .insert([{

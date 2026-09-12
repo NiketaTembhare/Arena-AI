@@ -26,6 +26,8 @@ export const PlayerView = ({ defaultRoomCode = '', onBackHome }) => {
   const [hostPin, setHostPin] = useState('');
   const [pinError, setPinError] = useState('');
 
+  const [showManualCodeInput, setShowManualCodeInput] = useState(false);
+
   const timerRef = useRef(null);
   const nameInputRef = useRef(null);
 
@@ -258,7 +260,9 @@ export const PlayerView = ({ defaultRoomCode = '', onBackHome }) => {
               📱
             </div>
 
-            <h2 className="font-heading font-black text-2xl sm:text-3xl text-white">JOIN ARENA ROOM</h2>
+            <h2 className="font-heading font-black text-2xl sm:text-3xl text-white">
+              {isRoomPrefilled ? 'ENTER YOUR NAME TO JOIN' : 'JOIN ARENA ROOM'}
+            </h2>
 
             {/* Read-Only Banner when Room Code is prefilled via QR Code */}
             {isRoomPrefilled ? (
@@ -267,7 +271,9 @@ export const PlayerView = ({ defaultRoomCode = '', onBackHome }) => {
                 <span className="font-heading font-black text-xl text-cyan-200">{roomCode}</span>
               </div>
             ) : (
-              <p className="text-xs text-slate-300 mt-1 mb-6">Enter the room code displayed on the Expo screen.</p>
+              <p className="text-xs text-slate-300 mt-1 mb-4">
+                Scan the QR code displayed on the Big Screen to join automatically.
+              </p>
             )}
 
             {joinError && (
@@ -277,11 +283,11 @@ export const PlayerView = ({ defaultRoomCode = '', onBackHome }) => {
             )}
 
             <form onSubmit={handleJoin} className="flex flex-col gap-4 text-left">
-              {/* Only show editable Room Code input if NOT prefilled by QR scan */}
-              {!isRoomPrefilled && (
+              {/* Optional Manual Room Code Entry (Hidden by default unless toggled) */}
+              {!isRoomPrefilled && showManualCodeInput && (
                 <div>
                   <label className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest block mb-1">
-                    ROOM CODE
+                    ROOM CODE (MANUAL FALLBACK)
                   </label>
                   <input
                     type="text"
@@ -297,7 +303,7 @@ export const PlayerView = ({ defaultRoomCode = '', onBackHome }) => {
 
               <div>
                 <label className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest block mb-1">
-                  AGENT / PLAYER NAME
+                  PLAYER NAME
                 </label>
                 <input
                   ref={nameInputRef}
@@ -310,6 +316,16 @@ export const PlayerView = ({ defaultRoomCode = '', onBackHome }) => {
                   className="input-cyber w-full py-3"
                 />
               </div>
+
+              {!isRoomPrefilled && !showManualCodeInput && (
+                <button
+                  type="button"
+                  onClick={() => setShowManualCodeInput(true)}
+                  className="text-[11px] font-mono text-cyan-400/80 hover:text-cyan-300 underline text-center block my-1"
+                >
+                  QR not scanning? Tap for manual code entry
+                </button>
+              )}
 
               <button type="submit" disabled={isJoining} className="btn-cyber-primary w-full py-4 text-base mt-2">
                 <LogIn className="w-5 h-5" />
