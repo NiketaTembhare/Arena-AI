@@ -169,8 +169,8 @@ export const AdminView = ({ onBackHome }) => {
             <Shield className="w-8 h-8" />
           </div>
           <div>
-            <h2 className="font-heading font-black text-2xl text-white">QUESTION ADMIN PANEL</h2>
-            <p className="text-xs text-slate-300 font-mono mt-1">Enter Host / Admin PIN to manage game content.</p>
+            <h2 className="font-heading font-black text-2xl text-white">GAME CONFIG AUTHENTICATION</h2>
+            <p className="text-xs text-slate-300 font-mono mt-1">Enter Host PIN to access booth game settings.</p>
           </div>
 
           {pinError && (
@@ -184,14 +184,24 @@ export const AdminView = ({ onBackHome }) => {
               type="password"
               value={pin}
               onChange={(e) => setPin(e.target.value)}
-              placeholder="4-Digit PIN (e.g. 1234)"
+              placeholder="••••"
               maxLength={4}
               required
-              className="input-cyber text-center font-heading font-black text-2xl tracking-widest py-3 w-full"
+              className="input-cyber text-center font-heading font-black text-3xl tracking-[0.4em] py-3 w-full text-white bg-slate-950 border-cyan-400"
+              style={{ color: '#ffffff', backgroundColor: '#0b1120' }}
             />
-            <button type="submit" className="btn-cyber-primary w-full py-4 text-sm">
-              UNLOCK ADMIN PANEL
-            </button>
+            <div className="flex gap-3 w-full">
+              <button
+                type="button"
+                onClick={onBackHome}
+                className="btn-cyber-secondary flex-1 py-3 text-xs"
+              >
+                CANCEL
+              </button>
+              <button type="submit" className="btn-cyber-primary flex-1 py-3 text-xs">
+                UNLOCK CONFIG
+              </button>
+            </div>
           </form>
         </div>
       </div>
@@ -212,8 +222,8 @@ export const AdminView = ({ onBackHome }) => {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="font-heading font-black text-2xl sm:text-3xl text-white">QUESTION ADMIN PANEL</h1>
-            <span className="text-xs font-mono text-cyan-400">Manage questions table without manual SQL</span>
+            <h1 className="font-heading font-black text-2xl sm:text-3xl text-white">GAME CONFIG & ADMIN PANEL</h1>
+            <span className="text-xs font-mono text-cyan-400">Configure replay rules and manage question bank</span>
           </div>
         </div>
 
