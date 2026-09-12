@@ -118,6 +118,32 @@ export const PlayerView = ({ defaultRoomCode = '', onBackHome }) => {
     }
   }, [roomState?.status, roomState?.current_round, session?.player?.id]);
 
+  const [countdownVal, setCountdownVal] = useState(0);
+
+  // 3-Second Round Start Countdown Effect
+  useEffect(() => {
+    if (roomState && (roomState.status === 'round1' || roomState.status === 'round2' || roomState.status === 'round3')) {
+      const startedAt = new Date(roomState.round_started_at).getTime();
+      const elapsedMs = Date.now() - startedAt;
+
+      if (elapsedMs < 3000) {
+        setCountdownVal(3);
+        const cdTimer = setInterval(() => {
+          setCountdownVal(prev => {
+            if (prev <= 1) {
+              clearInterval(cdTimer);
+              return 0;
+            }
+            audioEngine.playTick();
+            return prev - 1;
+          });
+        }, 1000);
+
+        return () => clearInterval(cdTimer);
+      }
+    }
+  }, [roomState?.status, roomState?.round_started_at]);
+
   // SERVER-AUTHORITATIVE TIMER: Compute remaining time directly from round_started_at
   useEffect(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -406,6 +432,23 @@ export const PlayerView = ({ defaultRoomCode = '', onBackHome }) => {
             <span className="font-mono text-xs text-slate-300">WAITING FOR HOST...</span>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // 3-SECOND COUNTDOWN OVERLAY
+  if (countdownVal > 0) {
+    return (
+      <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-2xl flex flex-col items-center justify-center p-6 text-center select-none">
+        <span className="text-xs font-mono text-cyan-400 uppercase tracking-widest bg-cyan-500/10 px-4 py-1.5 rounded-full border border-cyan-400/40 mb-6">
+          GET READY! STAGE {roomState?.current_round} STARTING
+        </span>
+        <div className="w-32 h-32 rounded-full bg-cyan-500/20 border-4 border-cyan-400 flex items-center justify-center font-heading font-black text-7xl text-cyan-300 shadow-[0_0_60px_rgba(0,240,255,0.6)] animate-bounce">
+          {countdownVal}
+        </div>
+        <h2 className="font-heading font-black text-3xl sm:text-4xl text-white tracking-widest mt-8 animate-pulse">
+          ARENA GO!
+        </h2>
       </div>
     );
   }

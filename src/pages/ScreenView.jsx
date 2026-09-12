@@ -144,7 +144,7 @@ export const ScreenView = ({ defaultRoomCode = '', onBackHome }) => {
 
   const leaderboard = calculateLeaderboard();
   const joinUrl = `${window.location.origin}${window.location.pathname}?room=${room?.room_code || ''}`;
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(joinUrl)}&color=06b6d4&bgcolor=020617`;
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(joinUrl)}&color=000000&bgcolor=ffffff`;
 
   if (!room) {
     return (
@@ -166,24 +166,6 @@ export const ScreenView = ({ defaultRoomCode = '', onBackHome }) => {
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 py-6 flex flex-col gap-6 relative z-10 min-h-screen">
-      
-      {/* Audio Unlock Overlay if sound not enabled */}
-      {!isAudioUnlocked && (
-        <div
-          onClick={unlockAudio}
-          className="fixed inset-0 z-50 bg-slate-950/98 backdrop-blur-2xl flex flex-col items-center justify-center cursor-pointer p-6 text-center select-none"
-        >
-          <div className="w-24 h-24 rounded-3xl bg-cyan-500/20 border-2 border-cyan-400 flex items-center justify-center text-cyan-300 text-4xl mb-6 shadow-[0_0_50px_rgba(6,182,212,0.5)] animate-bounce">
-            <VolumeX className="w-12 h-12" />
-          </div>
-          <h2 className="font-heading font-black text-3xl sm:text-4xl text-white tracking-wide">
-            TAP ANYWHERE TO ENABLE SOUND
-          </h2>
-          <p className="text-sm sm:text-base text-cyan-300 font-mono mt-3">
-            Required for venue audio & victory cues
-          </p>
-        </div>
-      )}
 
       {/* Top Header Bar */}
       <div className="glass-panel p-6 rounded-3xl border border-cyan-500/40 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-[0_0_30px_rgba(6,182,212,0.15)]">
@@ -215,6 +197,19 @@ export const ScreenView = ({ defaultRoomCode = '', onBackHome }) => {
             <span className="text-[10px] text-slate-400">ROOM CODE (TROUBLESHOOTING)</span>
             <span className="font-heading font-black text-2xl text-cyan-300">{room.room_code}</span>
           </div>
+
+          {/* Sound Toggle Button */}
+          <button
+            onClick={() => {
+              const nextState = !isAudioUnlocked;
+              setIsAudioUnlocked(nextState);
+              if (nextState) audioEngine.playClick();
+            }}
+            className="p-3 rounded-2xl bg-slate-900 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/20 transition-all flex items-center justify-center"
+            title={isAudioUnlocked ? "Mute Sound" : "Enable Sound"}
+          >
+            {isAudioUnlocked ? <Volume2 className="w-6 h-6 text-cyan-400" /> : <VolumeX className="w-6 h-6 text-rose-400" />}
+          </button>
         </div>
       </div>
 
@@ -222,18 +217,18 @@ export const ScreenView = ({ defaultRoomCode = '', onBackHome }) => {
       {room.status === 'lobby' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center my-auto">
           
-          {/* Join QR Card */}
+          {/* Join QR Card - High Contrast Pure Black & White */}
           <div className="glass-panel p-8 sm:p-12 rounded-3xl border-2 border-cyan-400 flex flex-col items-center text-center gap-6 shadow-[0_0_50px_rgba(6,182,212,0.2)]">
             <span className="text-xs font-mono text-cyan-400 uppercase tracking-widest bg-cyan-500/10 px-4 py-1.5 rounded-full border border-cyan-400/40">
               SCAN TO JOIN GAME ON PHONE
             </span>
 
-            <div className="p-4 rounded-3xl bg-slate-950 border-2 border-cyan-400/60 shadow-[0_0_30px_rgba(6,182,212,0.3)]">
-              <img src={qrCodeUrl} alt="Join QR Code" className="w-56 h-56 rounded-2xl" />
+            <div className="p-4 rounded-3xl bg-white border-4 border-cyan-400 shadow-[0_0_40px_rgba(255,255,255,0.8)]">
+              <img src={qrCodeUrl} alt="Join QR Code" className="w-64 h-64 rounded-xl" />
             </div>
 
             <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-mono text-slate-500">OR OPEN URL (TROUBLESHOOTING ONLY)</span>
+              <span className="text-[10px] font-mono text-slate-400">OR OPEN URL (TROUBLESHOOTING ONLY)</span>
               <span className="font-mono text-xs font-bold text-cyan-300 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800">
                 {window.location.host}/?room={room.room_code}
               </span>
