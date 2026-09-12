@@ -62,37 +62,33 @@ export const HomeView = ({ onPlayNow, onHowToPlay, onLeaderboard, onHostConsole,
 
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex flex-col gap-4 w-full max-w-lg">
+      {/* 3 Primary Navigation Buttons */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-3xl">
         <button
-          onClick={onPlayNow}
-          className="btn-cyber-primary w-full text-lg py-4 shadow-[0_0_30px_rgba(0,240,255,0.6)]"
+          onClick={onHostConsole}
+          className="btn-cyber-primary py-4 text-sm sm:text-base flex items-center justify-center gap-2"
         >
-          <Play className="w-6 h-6 fill-current" />
-          <span>JOIN LIVE MULTIPLAYER GAME</span>
+          <Shield className="w-5 h-5 text-purple-300" />
+          <span>HOST A ROOM</span>
         </button>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 w-full">
-          {onHostConsole && (
-            <button onClick={onHostConsole} className="btn-cyber-secondary text-xs py-3 px-3">
-              <Shield className="w-4 h-4 text-purple-400" />
-              <span>HOST ROOM</span>
-            </button>
-          )}
+        <button
+          onClick={onScreenDisplay}
+          className="btn-cyber-secondary py-4 text-sm sm:text-base flex items-center justify-center gap-2 border-amber-400/40 text-amber-300 hover:bg-amber-500/20"
+        >
+          <Cpu className="w-5 h-5 text-amber-400" />
+          <span>BIG SCREEN DISPLAY</span>
+        </button>
 
-          {onScreenDisplay && (
-            <button onClick={onScreenDisplay} className="btn-cyber-secondary text-xs py-3 px-3">
-              <Cpu className="w-4 h-4 text-amber-400" />
-              <span>BIG SCREEN</span>
-            </button>
-          )}
-
-          <button onClick={onLeaderboard} className="btn-cyber-secondary text-xs py-3 px-3 col-span-2 sm:col-span-1">
-            <Trophy className="w-4 h-4 text-amber-400" />
-            <span>LEADERBOARD</span>
-          </button>
-        </div>
+        <button
+          onClick={onLeaderboard}
+          className="btn-cyber-secondary py-4 text-sm sm:text-base flex items-center justify-center gap-2"
+        >
+          <Trophy className="w-5 h-5 text-cyan-400" />
+          <span>HALL OF FAME</span>
+        </button>
       </div>
+
 
     </div>
   );

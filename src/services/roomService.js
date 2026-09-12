@@ -462,3 +462,62 @@ export const subscribeToRoomAnswers = (roomId, onUpdate) => {
     supabase.removeChannel(channel);
   };
 };
+
+// Admin Question Management CRUD
+export const fetchAdminQuestions = async (roundFilter = null) => {
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      let query = supabase.from('questions').select('*').order('round', { ascending: true }).order('created_at', { ascending: true });
+      if (roundFilter && roundFilter !== 'all') {
+        query = query.eq('round', parseInt(roundFilter, 10));
+      }
+      const { data, error } = await query;
+      if (!error && data) return data;
+    } catch (e) {
+      console.warn("Supabase fetchAdminQuestions error:", e);
+    }
+  }
+  return [];
+};
+
+export const createQuestion = async (questionData) => {
+  if (isSupabaseConfigured() && supabase) {
+    const { data, error } = await supabase
+      .from('questions')
+      .insert([questionData])
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+  return { id: `q_local_${Date.now()}`, ...questionData };
+};
+
+export const updateQuestion = async (id, questionData) => {
+  if (isSupabaseConfigured() && supabase) {
+    const { data, error } = await supabase
+      .from('questions')
+      .update(questionData)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+  return { id, ...questionData };
+};
+
+export const toggleQuestionActive = async (id, currentIsActive) => {
+  if (isSupabaseConfigured() && supabase) {
+    const { data, error } = await supabase
+      .from('questions')
+      .update({ is_active: !currentIsActive })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+  return { id, is_active: !currentIsActive };
+};
+

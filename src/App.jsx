@@ -6,19 +6,20 @@ import { LeaderboardView } from './pages/LeaderboardView';
 import { HostView } from './pages/HostView';
 import { ScreenView } from './pages/ScreenView';
 import { PlayerView } from './pages/PlayerView';
+import { AdminView } from './pages/AdminView';
 
 import { GAME_CONFIG } from './game/config';
 import { audioEngine } from './game/audioEngine';
 
 export default function App() {
-  // Navigation View State: 'home' | 'player' | 'host' | 'screen' | 'leaderboard'
+  // Navigation View State: 'home' | 'player' | 'host' | 'screen' | 'leaderboard' | 'admin'
   const [currentView, setCurrentView] = useState('home');
   const [urlRoomCode, setUrlRoomCode] = useState('');
 
   // Audio & Expo Mode Controls
   const [isMuted, setIsMuted] = useState(false);
 
-  // Check URL query params on mount for mode selection (?mode=host, ?mode=screen, ?room=CODE)
+  // Check URL query params on mount for mode selection (?mode=host, ?mode=screen, ?mode=admin, ?room=CODE)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const modeParam = params.get('mode');
@@ -31,6 +32,8 @@ export default function App() {
       setCurrentView('host');
     } else if (modeParam === 'screen' || path.endsWith('/screen')) {
       setCurrentView('screen');
+    } else if (modeParam === 'admin' || path.endsWith('/admin')) {
+      setCurrentView('admin');
     } else if (roomParam || modeParam === 'player') {
       setCurrentView('player');
     }
@@ -104,8 +107,15 @@ export default function App() {
             onBackHome={() => handleResetToHome()}
           />
         )}
+
+        {currentView === 'admin' && (
+          <AdminView
+            onBackHome={() => handleResetToHome()}
+          />
+        )}
       </main>
     </div>
   );
 }
+
 

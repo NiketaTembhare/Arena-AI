@@ -301,7 +301,7 @@ export const ScreenView = ({ defaultRoomCode = '', onBackHome }) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 font-body text-base text-slate-200">
-                {leaderboard.map((entry, index) => {
+                {leaderboard.slice(0, 10).map((entry, index) => {
                   const rankNum = index + 1;
                   let rankBadge = `#${rankNum}`;
                   let rowStyle = "hover:bg-slate-900/60";
@@ -336,6 +336,12 @@ export const ScreenView = ({ defaultRoomCode = '', onBackHome }) => {
                 })}
               </tbody>
             </table>
+
+            {leaderboard.length > 10 && (
+              <div className="p-3 text-center bg-slate-900/90 text-cyan-300 font-mono text-xs border-t border-slate-800">
+                + {leaderboard.length - 10} MORE PLAYERS COMPETING LIVE
+              </div>
+            )}
           </div>
         </div>
       )}
