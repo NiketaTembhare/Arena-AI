@@ -1,25 +1,21 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ParticleBackground } from './components/ParticleBackground';
 import { ArenaHeader } from './components/ArenaHeader';
 import { HomeView } from './pages/HomeView';
 import { LeaderboardView } from './pages/LeaderboardView';
 import { HostView } from './pages/HostView';
-import { ScreenView } from './pages/ScreenView';
 import { PlayerView } from './pages/PlayerView';
 import { AdminView } from './pages/AdminView';
 
-import { GAME_CONFIG } from './game/config';
 import { audioEngine } from './game/audioEngine';
 
 export default function App() {
-  // Navigation View State: 'home' | 'player' | 'host' | 'screen' | 'leaderboard' | 'admin'
+  // Navigation View State: 'home' | 'player' | 'host' | 'leaderboard' | 'admin'
   const [currentView, setCurrentView] = useState('home');
   const [urlRoomCode, setUrlRoomCode] = useState('');
-
-  // Audio & Expo Mode Controls
   const [isMuted, setIsMuted] = useState(false);
 
-  // Check URL query params on mount for mode selection (?mode=host, ?mode=screen, ?mode=admin, ?room=CODE)
+  // Check URL query params on mount for mode selection (?mode=host, ?mode=admin, ?room=CODE, /host, /admin)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const modeParam = params.get('mode');
@@ -28,10 +24,8 @@ export default function App() {
 
     if (roomParam) setUrlRoomCode(roomParam.toUpperCase());
 
-    if (modeParam === 'host' || path.endsWith('/host')) {
+    if (modeParam === 'host' || modeParam === 'screen' || path.endsWith('/host') || path.endsWith('/screen')) {
       setCurrentView('host');
-    } else if (modeParam === 'screen' || path.endsWith('/screen')) {
-      setCurrentView('screen');
     } else if (modeParam === 'admin' || path.endsWith('/admin')) {
       setCurrentView('admin');
     } else if (roomParam || modeParam === 'player') {
@@ -64,21 +58,17 @@ export default function App() {
       <main className="flex-1 flex flex-col justify-center">
         {currentView === 'home' && (
           <HomeView
-            onPlayNow={() => {
+            onHostConsole={() => {
               audioEngine.playClick();
-              setCurrentView('player');
+              setCurrentView('host');
             }}
             onLeaderboard={() => {
               audioEngine.playClick();
               setCurrentView('leaderboard');
             }}
-            onHostConsole={() => {
+            onAdminConfig={() => {
               audioEngine.playClick();
-              setCurrentView('host');
-            }}
-            onScreenDisplay={() => {
-              audioEngine.playClick();
-              setCurrentView('screen');
+              setCurrentView('admin');
             }}
           />
         )}
@@ -92,13 +82,6 @@ export default function App() {
 
         {currentView === 'host' && (
           <HostView
-            onBackHome={() => handleResetToHome()}
-          />
-        )}
-
-        {currentView === 'screen' && (
-          <ScreenView
-            defaultRoomCode={urlRoomCode}
             onBackHome={() => handleResetToHome()}
           />
         )}
@@ -118,5 +101,3 @@ export default function App() {
     </div>
   );
 }
-
-

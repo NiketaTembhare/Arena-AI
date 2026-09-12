@@ -145,6 +145,10 @@ export const joinRoom = async (roomCode, displayName) => {
   const room = await getRoomByCode(roomCode);
   if (!room) throw new Error("Room code not found. Please verify the code.");
 
+  const cleanName = (displayName && typeof displayName === 'string' && displayName.trim())
+    ? displayName.trim()
+    : 'Player';
+
   let deviceToken = localStorage.getItem('ai_arena_device_token');
   if (!deviceToken) {
     deviceToken = `dev_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -154,7 +158,7 @@ export const joinRoom = async (roomCode, displayName) => {
   const playerObj = {
     id: `player_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
     room_id: room.id,
-    display_name: displayName,
+    display_name: cleanName,
     device_token: deviceToken,
     joined_at: new Date().toISOString()
   };
@@ -173,23 +177,27 @@ export const joinRoom = async (roomCode, displayName) => {
         // Update display name if changed
         const { data: updated } = await supabase
           .from('room_players')
-          .update({ display_name: displayName })
+          .update({ display_name: cleanName })
           .eq('id', existing.id)
           .select()
           .single();
         playerObj.id = updated ? updated.id : existing.id;
+        playerObj.display_name = cleanName;
       } else {
         const { data, error } = await supabase
           .from('room_players')
           .insert([{
             room_id: room.id,
-            display_name: displayName,
+            display_name: cleanName,
             device_token: deviceToken
           }])
           .select()
           .single();
 
-        if (!error && data) playerObj.id = data.id;
+        if (!error && data) {
+          playerObj.id = data.id;
+          playerObj.display_name = data.display_name || cleanName;
+        }
       }
     } catch (e) {
       console.warn("Supabase joinRoom error:", e);

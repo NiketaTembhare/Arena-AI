@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, ArrowLeft, RotateCcw, Trash2, Globe } from 'lucide-react';
+import { Trophy, ArrowLeft, Globe } from 'lucide-react';
 import { fetchGlobalLeaderboard } from '../services/leaderboardService';
-import { clearLeaderboard } from '../game/storage';
 
-export const LeaderboardView = ({ onBackHome, onPlayAgain }) => {
+export const LeaderboardView = ({ onBackHome }) => {
   const [board, setBoard] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -11,19 +10,12 @@ export const LeaderboardView = ({ onBackHome, onPlayAgain }) => {
     let isMounted = true;
     fetchGlobalLeaderboard().then(data => {
       if (isMounted) {
-        setBoard(data);
+        setBoard(data || []);
         setIsLoading(false);
       }
     });
     return () => { isMounted = false; };
   }, []);
-
-  const handleReset = () => {
-    if (window.confirm("Reset local leaderboard entries back to default sample records?")) {
-      const resetData = clearLeaderboard();
-      setBoard(resetData);
-    }
-  };
 
   return (
     <div className="w-full max-w-5xl mx-auto px-4 py-8 flex flex-col items-center min-h-[calc(100vh-100px)] relative z-10">
@@ -39,41 +31,35 @@ export const LeaderboardView = ({ onBackHome, onPlayAgain }) => {
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="font-heading font-black text-2xl sm:text-3xl text-white tracking-wide">
-                  ARENA LEADERBOARD
+                  HALL OF FAME
                 </h2>
-                <span className="bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 text-[10px] font-mono px-2 py-0.5 rounded flex items-center gap-1">
-                  <Globe className="w-3 h-3" /> GLOBAL SUPABASE
+                <span className="bg-amber-500/20 text-amber-300 border border-amber-400/40 text-[10px] font-mono px-2 py-0.5 rounded flex items-center gap-1">
+                  <Globe className="w-3 h-3" /> EVENT STANDINGS
                 </span>
               </div>
               <p className="text-xs text-slate-400 font-mono">
-                Top TCS Expo AI Arena Agents & Champions
+                Top Expo AI Arena Match Performances
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onPlayAgain}
-              className="btn-cyber-primary text-sm py-2.5 px-5"
-            >
-              <RotateCcw className="w-4 h-4" />
-              <span>PLAY GAME</span>
-            </button>
-
-            <button
-              onClick={onBackHome}
-              className="btn-cyber-secondary text-sm py-2.5 px-4"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>HOME</span>
-            </button>
-          </div>
+          <button
+            onClick={onBackHome}
+            className="btn-cyber-secondary text-xs py-2.5 px-5 flex items-center gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>BACK TO HOME</span>
+          </button>
         </div>
 
         {/* Leaderboard Table Container */}
         {isLoading ? (
           <div className="p-12 text-center text-cyan-300 font-mono text-sm animate-pulse">
-            LOADING GLOBAL ARENA SCORES FROM SUPABASE...
+            LOADING ARENA HALL OF FAME...
+          </div>
+        ) : board.length === 0 ? (
+          <div className="p-12 text-center text-slate-400 font-mono text-sm">
+            No match records yet. Host a game to create the first Hall of Fame entries!
           </div>
         ) : (
           <div className="overflow-x-auto w-full rounded-2xl border border-slate-800 bg-slate-950/80">
@@ -137,20 +123,6 @@ export const LeaderboardView = ({ onBackHome, onPlayAgain }) => {
             </table>
           </div>
         )}
-
-        {/* Footer Admin Reset */}
-        <div className="flex justify-between items-center pt-2">
-          <span className="text-xs text-slate-500 font-mono">
-            Showing top {board.length} arena records
-          </span>
-
-          <button
-            onClick={handleReset}
-            className="text-xs text-slate-500 hover:text-rose-400 transition-colors flex items-center gap-1 font-mono"
-          >
-            <Trash2 className="w-3.5 h-3.5" /> Reset Local Records
-          </button>
-        </div>
 
       </div>
 

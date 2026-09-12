@@ -104,7 +104,7 @@ ALTER TABLE room_players ENABLE ROW LEVEL SECURITY;
 ALTER TABLE room_round_questions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE room_answers ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow public read access to active questions" ON questions FOR SELECT USING (true);
+CREATE POLICY "Allow public full access to questions" ON questions FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public full access to game_rooms" ON game_rooms FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public full access to room_players" ON room_players FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public full access to room_round_questions" ON room_round_questions FOR ALL USING (true) WITH CHECK (true);
